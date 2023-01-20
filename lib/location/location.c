@@ -22,7 +22,8 @@ LOG_MODULE_REGISTER(location, CONFIG_LOCATION_LOG_LEVEL);
 BUILD_ASSERT(
 	IS_ENABLED(CONFIG_LOCATION_METHOD_GNSS) ||
 	IS_ENABLED(CONFIG_LOCATION_METHOD_CELLULAR) ||
-	IS_ENABLED(CONFIG_LOCATION_METHOD_WIFI),
+	IS_ENABLED(CONFIG_LOCATION_METHOD_WIFI) ||
+	IS_ENABLED(CONFIG_LOCATION_METHOD_OTDOA),
 	"At least one location method must be enabled");
 
 static bool initialized;
@@ -30,6 +31,7 @@ static bool initialized;
 static const char LOCATION_METHOD_CELLULAR_STR[] = "Cellular";
 static const char LOCATION_METHOD_GNSS_STR[] = "GNSS";
 static const char LOCATION_METHOD_WIFI_STR[] = "Wi-Fi";
+static const char LOCATION_METHOD_OTDOA_STR[] = "OTDOA";
 static const char LOCATION_METHOD_UNKNOWN_STR[] = "Unknown";
 
 int location_init(location_event_handler_t handler)
@@ -68,8 +70,11 @@ int location_request(const struct location_config *config)
 #if defined(CONFIG_LOCATION_METHOD_WIFI)
 		LOCATION_METHOD_WIFI,
 #endif
-#if defined(CONFIG_LOCATION_METHOD_CELLULAR)
-		LOCATION_METHOD_CELLULAR,
+// #if defined(CONFIG_LOCATION_METHOD_CELLULAR)
+// 		LOCATION_METHOD_CELLULAR,
+// #endif
+#if defined(CONFIG_LOCATION_METHOD_OTDOA)
+		LOCATION_METHOD_OTDOA,
 #endif
 		};
 
@@ -141,6 +146,9 @@ static void location_config_method_defaults_set(
 		method->wifi.timeout = 30 * MSEC_PER_SEC;
 		method->wifi.service = LOCATION_SERVICE_ANY;
 #endif
+	} else if (method_type == LOCATION_METHOD_OTDOA) {
+		method->otdoa.timeout = 30 * MSEC_PER_SEC;
+		method->otdoa.service = LOCATION_SERVICE_ANY;  // BCP TODO: Does OTDOA need service data member?
 	}
 }
 
@@ -180,6 +188,9 @@ const char *location_method_str(enum location_method method)
 
 	case LOCATION_METHOD_WIFI:
 		return LOCATION_METHOD_WIFI_STR;
+
+    case LOCATION_METHOD_OTDOA:
+	    return LOCATION_METHOD_OTDOA_STR;
 
 	default:
 		return LOCATION_METHOD_UNKNOWN_STR;

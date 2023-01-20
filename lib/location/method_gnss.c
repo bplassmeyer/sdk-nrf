@@ -682,6 +682,9 @@ static void method_gnss_pvt_work_fn(struct k_work *item)
 	if (pvt_data.flags & NRF_MODEM_GNSS_PVT_FLAG_FIX_VALID) {
 		fixes_remaining--;
 
+		// bCP
+		LOG_WRN("\n\n Valid Fix. Fixes rem: %d\n\n", fixes_remaining);
+
 		location_result.latitude = pvt_data.latitude;
 		location_result.longitude = pvt_data.longitude;
 		location_result.accuracy = pvt_data.accuracy;
@@ -694,9 +697,18 @@ static void method_gnss_pvt_work_fn(struct k_work *item)
 		location_result.datetime.second = pvt_data.datetime.seconds;
 		location_result.datetime.ms = pvt_data.datetime.ms;
 
+		// BCP 
+		location_result.latitude = 41.8781;
+		location_result.longitude = -87.6298;
+
+		LOG_WRN("before check\n\n fixes rem: %d\n\n", fixes_remaining);
+
 		if (fixes_remaining <= 0) {
 			/* We are done, stop GNSS and publish the fix. */
 			method_gnss_cancel();
+			printk("here\n\n");
+			LOG_INF("\n\n Fixes rem : 0 \\ Loc result: %lf %lf", location_result.latitude, location_result.longitude);
+			fflush(stdout);
 			location_core_event_cb(&location_result);
 		}
 	} else if (gnss_config.visibility_detection) {

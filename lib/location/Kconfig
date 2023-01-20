@@ -21,6 +21,10 @@ config LOCATION_METHOD_CELLULAR
 	depends on LTE_LINK_CONTROL
 	default y
 
+config LOCATION_METHOD_OTDOA
+    bool "Allow OTDOA positioning to be used for obtaining the location"
+	default y
+
 config LOCATION_METHOD_WIFI
 	bool "Allow Wi-Fi positioning to be used for obtaining the location"
 	depends on WIFI

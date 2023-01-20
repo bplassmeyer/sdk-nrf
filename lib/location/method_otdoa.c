@@ -14,6 +14,8 @@
 #include "location_core.h"
 #include "location_utils.h"
 
+#include "method_otdoa.h"
+
 LOG_MODULE_DECLARE(location, CONFIG_LOCATION_LOG_LEVEL);
 
 BUILD_ASSERT(
@@ -22,12 +24,12 @@ BUILD_ASSERT(
 	(int)LOCATION_SERVICE_HERE == (int)MULTICELL_SERVICE_HERE,
 	"Incompatible enums location_service and multicell_service");
 
-struct method_cellular_positioning_work_args {
+struct method_otdoa_positioning_work_args {
 	struct k_work work_item;
-	struct location_cellular_config cellular_config;
+	struct location_otdoa_config otdoa_config;
 };
 
-static struct method_cellular_positioning_work_args method_cellular_positioning_work;
+static struct method_otdoa_positioning_work_args method_otdoa_positioning_work;
 
 static K_SEM_DEFINE(cellmeas_data_ready, 0, 1);
 
@@ -37,7 +39,7 @@ static struct lte_lc_cells_info cell_data = {
 };
 static bool running;
 
-void method_cellular_lte_ind_handler(const struct lte_lc_evt *const evt)
+void method_otdoa_lte_ind_handler(const struct lte_lc_evt *const evt)
 {
 	switch (evt->type) {
 	case LTE_LC_EVT_NEIGHBOR_CELL_MEAS: {
@@ -69,7 +71,7 @@ void method_cellular_lte_ind_handler(const struct lte_lc_evt *const evt)
 	}
 }
 
-static int method_cellular_ncellmeas_start(void)
+static int method_otdoa_ncellmeas_start(void)
 {
 	struct location_utils_modem_params_info modem_params = { 0 };
 	int err;
@@ -103,29 +105,31 @@ static int method_cellular_ncellmeas_start(void)
 		cell_data.current_cell.id = modem_params.cell_id;
 		cell_data.current_cell.phys_cell_id = modem_params.phys_cell_id;
 
-		LOG_ERR("\nCELL ID: %u\n\n", cell_data.current_cell.id);
+		LOG_ERR("\nCELL ID (obtained from nCell): %u\n\n", cell_data.current_cell.id);
 
 		// BCP hack to spoof cell id
 		cell_data.current_cell.id = 13922819;  // Cell Tower near Serrano Systems
+
+		LOG_ERR("\nCELL ID (spoofed): %u\n\n", cell_data.current_cell.id);
 		k_sem_give(&cellmeas_data_ready);
 	}
 	return 0;
 }
 
-static void method_cellular_positioning_work_fn(struct k_work *work)
+static void method_otdoa_positioning_work_fn(struct k_work *work)
 {
 	int64_t ncellmeas_start_time;
 	int ret;
-	struct method_cellular_positioning_work_args *work_data =
-		CONTAINER_OF(work, struct method_cellular_positioning_work_args, work_item);
-	const struct location_cellular_config cellular_config = work_data->cellular_config;
+	struct method_otdoa_positioning_work_args *work_data =
+		CONTAINER_OF(work, struct method_otdoa_positioning_work_args, work_item);
+	const struct location_otdoa_config otdoa_config = work_data->otdoa_config;
 
-	location_core_timer_start(cellular_config.timeout);
+	location_core_timer_start(otdoa_config.timeout);
 
 	ncellmeas_start_time = k_uptime_get();
 
-	LOG_DBG("Triggering neighbor cell measurements");
-	ret = method_cellular_ncellmeas_start();
+	LOG_DBG("Triggering OTDOA neighbor cell measurements");
+	ret = method_otdoa_ncellmeas_start();
 	if (ret) {
 		LOG_WRN("Cannot start neighbor cell measurements");
 		location_core_event_cb_error();
@@ -160,24 +164,24 @@ static void method_cellular_positioning_work_fn(struct k_work *work)
 	location_utils_systime_to_location_datetime(&location_result.datetime);
 
 	/* Check if timeout is given */
-	params.timeout = cellular_config.timeout;
-	if (cellular_config.timeout != SYS_FOREVER_MS) {
+	params.timeout = otdoa_config.timeout;
+	if (otdoa_config.timeout != SYS_FOREVER_MS) {
 		/* +1 to round the time up */
 		ncellmeas_time = (k_uptime_get() - ncellmeas_start_time) + 1;
 
 		/* Check if timeout has already elapsed */
-		if (ncellmeas_time >= cellular_config.timeout) {
+		if (ncellmeas_time >= otdoa_config.timeout) {
 			LOG_WRN("Timeout occurred during neighbour cell measurement");
 			location_core_event_cb_timeout();
 			running = false;
 			return;
 		}
 		/* Take time used for neighbour cell measurements into account */
-		params.timeout = cellular_config.timeout - ncellmeas_time;
+		params.timeout = otdoa_config.timeout - ncellmeas_time;
 	}
 
 	/* enum multicell_service can be used directly because of BUILD_ASSERT */
-	params.service = cellular_config.service;
+	params.service = otdoa_config.service;
 	params.cell_data = &cell_data;
 	ret = multicell_location_get(&params, &location);
 	if (ret) {
@@ -200,27 +204,27 @@ static void method_cellular_positioning_work_fn(struct k_work *work)
 #endif /* defined(CONFIG_LOCATION_METHOD_CELLULAR_EXTERNAL) */
 }
 
-int method_cellular_location_get(const struct location_method_config *config)
+int method_otdoa_location_get(const struct location_method_config *config)
 {
 	/* Note: LTE status not checked, let it fail in NCELLMEAS if no connection */
 
-	method_cellular_positioning_work.cellular_config = config->cellular;
+	method_otdoa_positioning_work.otdoa_config = config->otdoa;
 	k_work_submit_to_queue(location_core_work_queue_get(),
-			       &method_cellular_positioning_work.work_item);
+			       &method_otdoa_positioning_work.work_item);
 
 	running = true;
 
 	return 0;
 }
 
-int method_cellular_cancel(void)
+int method_otdoa_cancel(void)
 {
 	if (running) {
 		running = false;
 
 		/* Cancel/stopping might trigger a NCELLMEAS notification */
 		(void)lte_lc_neighbor_cell_measurement_cancel();
-		(void)k_work_cancel(&method_cellular_positioning_work.work_item);
+		(void)k_work_cancel(&method_otdoa_positioning_work.work_item);
 		k_sem_reset(&cellmeas_data_ready);
 	} else {
 		return -EPERM;
@@ -229,13 +233,13 @@ int method_cellular_cancel(void)
 	return 0;
 }
 
-int method_cellular_init(void)
+int method_otdoa_init(void)
 {
 	running = false;
 
-	k_work_init(&method_cellular_positioning_work.work_item,
-		    method_cellular_positioning_work_fn);
-	lte_lc_register_handler(method_cellular_lte_ind_handler);
+	k_work_init(&method_otdoa_positioning_work.work_item,
+		    method_otdoa_positioning_work_fn);
+	lte_lc_register_handler(method_otdoa_lte_ind_handler);
 
 #if !defined(CONFIG_LOCATION_METHOD_CELLULAR_EXTERNAL)
 	int ret = multicell_location_provision_certificate(false);

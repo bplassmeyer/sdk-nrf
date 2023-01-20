@@ -20,6 +20,12 @@
 #include "method_wifi.h"
 #endif
 
+#if defined(CONFIG_LOCATION_METHOD_OTDOA)
+#include "method_otdoa.h"
+#endif
+
+#include "method_otdoa.h"
+
 LOG_MODULE_DECLARE(location, CONFIG_LOCATION_LOG_LEVEL);
 
 /** Event handler. */
@@ -120,6 +126,21 @@ static const struct location_method_api method_wifi_api = {
 };
 #endif
 
+/* BCP TODO: Do we need a config defined for this? */
+#if defined(CONFIG_LOCATION_METHOD_OTDOA)
+/** OTDOA location method configuration. */
+static const struct location_method_api method_otdoa_api = {
+	.method           = LOCATION_METHOD_OTDOA,
+	.method_string    = "OTDOA",
+	.init             = method_otdoa_init,
+	.location_get     = method_otdoa_location_get,
+	.cancel           = method_otdoa_cancel,
+#if defined(CONFIG_LOCATION_DATA_DETAILS)
+	.details_get      = NULL,
+#endif
+};
+#endif
+
 /** Supported location methods. */
 static const struct location_method_api *methods_supported[] = {
 #if defined(CONFIG_LOCATION_METHOD_GNSS)
@@ -130,6 +151,9 @@ static const struct location_method_api *methods_supported[] = {
 #endif
 #if defined(CONFIG_LOCATION_METHOD_WIFI)
 	&method_wifi_api,
+#endif
+#if defined(CONFIG_LOCATION_METHOD_OTDOA)
+    &method_otdoa_api,
 #endif
 	NULL
 };
@@ -325,6 +349,8 @@ void location_core_config_log(const struct location_config *config)
 				location_core_service_str(config->methods[i].wifi.service),
 				config->methods[i].wifi.service);
 #endif
+		} else if (type == LOCATION_METHOD_OTDOA) {
+			LOG_DBG("      Timeout: %dms", config->methods[i].cellular.timeout);
 		}
 	}
 }

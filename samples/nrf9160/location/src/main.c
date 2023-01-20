@@ -100,15 +100,15 @@ static void location_with_fallback_get(void)
 {
 	int err;
 	struct location_config config;
-	enum location_method methods[] = {LOCATION_METHOD_GNSS, LOCATION_METHOD_CELLULAR};
+	enum location_method methods[] = {LOCATION_METHOD_GNSS, LOCATION_METHOD_OTDOA};
 
 	location_config_defaults_set(&config, ARRAY_SIZE(methods), methods);
 	/* GNSS timeout is set to 1 second to force a failure. */
 	config.methods[0].gnss.timeout = 1 * MSEC_PER_SEC;
 	/* Default cellular configuration may be overridden here. */
-	config.methods[1].cellular.timeout = 40 * MSEC_PER_SEC;
+	config.methods[1].otdoa.timeout = 40 * MSEC_PER_SEC;
 
-	printk("Requesting location with short GNSS timeout to trigger fallback to cellular...\n");
+	printk("Requesting location with short GNSS timeout to trigger fallback to OTDOA...\n");
 
 	err = location_request(&config);
 	if (err) {

@@ -355,7 +355,10 @@ int rest_client_request(struct rest_client_req_context *req_ctx,
 	struct http_request http_req;
 	int ret;
 
+    LOG_INF("\n\n IN rest_client_request\n\n");
 	rest_client_init_request(req_ctx, &http_req);
+
+	printk("\n\n\n HIIII!\n\n\n");
 
 	http_req.url = req_ctx->url;
 
@@ -368,6 +371,9 @@ int rest_client_request(struct rest_client_req_context *req_ctx,
 		http_req.payload = req_ctx->body;
 		http_req.payload_len = strlen(http_req.payload);
 		LOG_DBG("Payload: %s", http_req.payload);
+
+		// BCP
+		printk("\n\nPayload: %s\n\n", http_req.payload);
 	}
 
 	ret = rest_client_do_api_call(&http_req, req_ctx, resp_ctx);

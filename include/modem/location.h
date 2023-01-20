@@ -38,6 +38,8 @@ enum location_method {
 	LOCATION_METHOD_GNSS,
 	/** Wi-Fi positioning. */
 	LOCATION_METHOD_WIFI,
+	/** Otdoa Positioning **/
+	LOCATION_METHOD_OTDOA,
 };
 
 /** Location acquisition mode. */
@@ -309,6 +311,18 @@ struct location_wifi_config {
 	enum location_service service;
 };
 
+/** OTDOA positioning configuration. */
+struct location_otdoa_config {
+	/**
+	 * @brief Timeout (in milliseconds) of how long the OTDOA positioning procedure can take.
+	 * SYS_FOREVER_MS means that the timer is disabled.
+	 */
+	int32_t timeout;
+
+	/** Used OTDOA positioning service. */
+	enum location_service service;
+};
+
 /** Location method configuration. */
 struct location_method_config {
 	/** Location method. */
@@ -320,6 +334,8 @@ struct location_method_config {
 		struct location_gnss_config gnss;
 		/** Configuration for LOCATION_METHOD_WIFI. */
 		struct location_wifi_config wifi;
+		/** Configuration for LOCATION_METHOD_OTDOA **/
+		struct location_otdoa_config otdoa;
 	};
 };
 

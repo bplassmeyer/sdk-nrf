@@ -256,6 +256,7 @@ static int do_rest_client_request(struct nrf_cloud_rest_context *const rest_ctx,
 	struct rest_client_resp_context *const resp,
 	bool check_status_good, bool expect_body)
 {
+	LOG_INF("\n\nIN do_rest_client_request\n\n");
 	int ret = rest_client_request(req, resp);
 
 	sync_rest_client_data(rest_ctx, req, resp);
@@ -286,6 +287,7 @@ static int do_rest_client_request(struct nrf_cloud_rest_context *const rest_ctx,
 		return -ENODATA;
 	}
 
+    LOG_INF("\n\nReturning from do_rest_client_request\n\n");
 	return 0;
 }
 int nrf_cloud_rest_shadow_state_update(struct nrf_cloud_rest_context *const rest_ctx,
@@ -616,6 +618,9 @@ int nrf_cloud_rest_location_get(struct nrf_cloud_rest_context *const rest_ctx,
 
 	/* Format auth header */
 	ret = generate_auth_header(rest_ctx->auth, &auth_hdr);
+
+	// BCP
+	LOG_INF("\n\n IN CLOUD REST GET\n\n");
 
 	if (ret) {
 		LOG_ERR("Could not format HTTP auth header, err: %d", ret);
